@@ -5,11 +5,9 @@ vim.g.have_nerd_font = true
 vim.opt.number = true
 vim.opt.mouse = 'a'
 vim.opt.showmode = false
-
 vim.schedule(function()
   vim.opt.clipboard = 'unnamedplus'
 end)
-
 vim.opt.breakindent = true
 vim.opt.undofile = true
 vim.opt.ignorecase = true
@@ -25,7 +23,7 @@ vim.opt.inccommand = 'split'
 vim.opt.cursorline = true
 vim.opt.scrolloff = 10
 vim.opt.confirm = true
-vim.opt.clipboard = 'unnamedplus'
+vim.wo.relativenumber = true
 
 -- Basic Keymaps
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
@@ -77,7 +75,6 @@ require('lazy').setup({
       },
     },
   },
-
   {
     'folke/which-key.nvim',
     event = 'VimEnter',
@@ -127,7 +124,6 @@ require('lazy').setup({
       },
     },
   },
-
   -- Fuzzy finder
   {
     'nvim-telescope/telescope.nvim',
@@ -156,10 +152,8 @@ require('lazy').setup({
           },
         },
       }
-
       pcall(require('telescope').load_extension, 'fzf')
       pcall(require('telescope').load_extension, 'ui-select')
-
       -- Telescope keymaps
       local builtin = require 'telescope.builtin'
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
@@ -172,27 +166,23 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
-
       vim.keymap.set('n', '<leader>/', function()
         builtin.current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
           winblend = 10,
           previewer = false,
         })
       end, { desc = '[/] Fuzzily search in current buffer' })
-
       vim.keymap.set('n', '<leader>s/', function()
         builtin.live_grep {
           grep_open_files = true,
           prompt_title = 'Live Grep in Open Files',
         }
       end, { desc = '[S]earch [/] in Open Files' })
-
       vim.keymap.set('n', '<leader>sn', function()
         builtin.find_files { cwd = vim.fn.stdpath 'config' }
       end, { desc = '[S]earch [N]eovim files' })
     end,
   },
-
   -- LSP Configuration
   {
     'folke/lazydev.nvim',
@@ -220,7 +210,6 @@ require('lazy').setup({
             mode = mode or 'n'
             vim.keymap.set(mode, keys, func, { buffer = event.buf, desc = 'LSP: ' .. desc })
           end
-
           map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
           map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
           map('gI', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
@@ -230,7 +219,6 @@ require('lazy').setup({
           map('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
           map('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction', { 'n', 'x' })
           map('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
-
           local function client_supports_method(client, method, bufnr)
             if vim.fn.has 'nvim-0.11' == 1 then
               return client:supports_method(method, bufnr)
@@ -238,7 +226,6 @@ require('lazy').setup({
               return client.supports_method(method, { bufnr = bufnr })
             end
           end
-
           local client = vim.lsp.get_client_by_id(event.data.client_id)
           if client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_documentHighlight, event.buf) then
             local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
@@ -247,13 +234,11 @@ require('lazy').setup({
               group = highlight_augroup,
               callback = vim.lsp.buf.document_highlight,
             })
-
             vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
               buffer = event.buf,
               group = highlight_augroup,
               callback = vim.lsp.buf.clear_references,
             })
-
             vim.api.nvim_create_autocmd('LspDetach', {
               group = vim.api.nvim_create_augroup('kickstart-lsp-detach', { clear = true }),
               callback = function(event2)
@@ -262,7 +247,6 @@ require('lazy').setup({
               end,
             })
           end
-
           if client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_inlayHint, event.buf) then
             map('<leader>th', function()
               vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf })
@@ -301,6 +285,7 @@ require('lazy').setup({
       local capabilities = vim.lsp.protocol.make_client_capabilities()
       capabilities = vim.tbl_deep_extend('force', capabilities, require('cmp_nvim_lsp').default_capabilities())
 
+      -- Simple server configurations
       local servers = {
         lua_ls = {
           settings = {
@@ -311,28 +296,28 @@ require('lazy').setup({
             },
           },
         },
-      }
-
-      local ensure_installed = vim.tbl_keys(servers or {})
-      vim.list_extend(ensure_installed, {
-        'stylua',
-      })
-      require('mason-tool-installer').setup { ensure_installed = ensure_installed }
-
-      require('mason-lspconfig').setup {
-        ensure_installed = {},
-        automatic_installation = false,
-        handlers = {
-          function(server_name)
-            local server = servers[server_name] or {}
-            server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            require('lspconfig')[server_name].setup(server)
+        clangd = {
+          cmd = { 'clangd', '--compile-commands-dir=build' },
+          filetypes = { 'c', 'cpp' },
+          on_attach = function(client, bufnr)
+            vim.env.C_INCLUDE_PATH = '/usr/lib/x86_64-linux-gnu/openmpi/include:/usr/include'
+            vim.env.LD_LIBRARY_PATH = '/usr/lib/x86_64-linux-gnu:/usr/local/lib'
           end,
         },
       }
+
+      -- Setup LSP servers manually to avoid automatic_enable issues
+      for server_name, server_config in pairs(servers) do
+        server_config.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server_config.capabilities or {})
+        require('lspconfig')[server_name].setup(server_config)
+      end
+
+      -- Setup tool installer separately
+      require('mason-tool-installer').setup {
+        ensure_installed = { 'lua_ls', 'clangd', 'stylua', 'clang-format' },
+      }
     end,
   },
-
   -- Autoformat
   {
     'stevearc/conform.nvim',
@@ -367,7 +352,6 @@ require('lazy').setup({
       },
     },
   },
-
   -- Autocompletion
   {
     'hrsh7th/nvim-cmp',
@@ -390,9 +374,7 @@ require('lazy').setup({
     config = function()
       local cmp = require 'cmp'
       local luasnip = require 'luasnip'
-
       luasnip.config.setup {}
-
       cmp.setup {
         snippet = {
           expand = function(args)
@@ -436,31 +418,23 @@ require('lazy').setup({
           },
         },
       }
-      -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
     end,
   },
-
   -- Highlight todo, notes in comments
   { 'folke/todo-comments.nvim', event = 'vimenter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
-
   -- Mini plugins collection
   {
     'echasnovski/mini.nvim',
     config = function()
       require('mini.ai').setup { n_lines = 500 }
       require('mini.surround').setup()
-
       local statusline = require 'mini.statusline'
       statusline.setup { use_icons = vim.g.have_nerd_font }
-
       statusline.section_location = function()
         return '%2l:%-2v'
       end
     end,
   },
-
   -- Treesitter for syntax highlighting
   {
     'nvim-treesitter/nvim-treesitter',
@@ -476,7 +450,6 @@ require('lazy').setup({
       indent = { enable = true, disable = { 'ruby' } },
     },
   },
-
   { import = 'custom.plugins' },
 }, {
   ui = {
@@ -497,21 +470,3 @@ require('lazy').setup({
     },
   },
 })
-
--- Configure clangd
-require('lspconfig').clangd.setup {
-  cmd = { 'clangd', '--compile-commands-dir=build' },
-  settings = {
-    clangd = {
-      filetypes = { 'c', 'cpp' },
-    },
-  },
-  on_attach = function(client, bufnr)
-    vim.env.C_INCLUDE_PATH = '/usr/lib/x86_64-linux-gnu/openmpi/include:/usr/include'
-    vim.env.LD_LIBRARY_PATH = '/usr/lib/x86_64-linux-gnu:/usr/local/lib'
-  end,
-}
-
--- Clang format keybinding
-vim.api.nvim_set_keymap('n', '<leader>cf', ':!clang-format -i %<cr>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader>cf', ':!clang-format -i %<cr>', { noremap = true, silent = true })
