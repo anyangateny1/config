@@ -360,7 +360,7 @@ require('lazy').setup({
               return vim.fn.fnamemodify(ctx.filename, ':h')
             end
           end,
-          -- Explicitly specify the style file and handle WSL paths
+          -- Explicitly specify the style file
           args = function(self, ctx)
             local style_file = vim.fs.find('.clang-format', {
               path = ctx.filename,
@@ -368,15 +368,8 @@ require('lazy').setup({
             })[1]
             
             if style_file then
-              -- Convert WSL path to proper format if needed
-              local style_path = style_file
-              if string.match(style_path, "^/mnt/[a-z]/") then
-                -- For WSL, ensure the path is accessible
-                style_path = vim.fn.resolve(style_path)
-              end
-              return { '-style=file:' .. style_path }
+              return { '-style=file:' .. style_file }
             else
-              -- Fallback to default style
               return { '-style=file' }
             end
           end,
@@ -505,3 +498,17 @@ require('lazy').setup({
 
 -- Load clang-format debug utility for WSL troubleshooting
 require('custom.clang-format-debug')
+
+-- Auto-remove trailing whitespace on save
+vim.api.nvim_create_autocmd('BufWritePre', {
+  pattern = { '*.cpp', '*.h', '*.hpp', '*.c', '*.cc', '*.cxx' },
+  callback = function()
+    -- Save cursor position
+    local save_cursor = vim.fn.getpos('.')
+    -- Remove trailing whitespace
+    vim.cmd([[%s/\s\+$//e]])
+    -- Restore cursor position
+    vim.fn.setpos('.', save_cursor)
+  end,
+  desc = 'Remove trailing whitespace from C++ files before save',
+})
