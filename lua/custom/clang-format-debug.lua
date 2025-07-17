@@ -15,6 +15,49 @@ function M.debug_clang_format()
   print("vim.fn.expand('%'): " .. vim.fn.expand('%'))
   print("vim.api.nvim_buf_get_name(0): " .. vim.api.nvim_buf_get_name(0))
   
+  -- Symlink analysis
+  print("\n--- Symlink Analysis ---")
+  local resolved_file = vim.fn.resolve(current_file)
+  local resolved_dir = vim.fn.resolve(current_dir)
+  
+  print("Original file path: " .. current_file)
+  print("Resolved file path: " .. resolved_file)
+  print("Original directory: " .. current_dir)
+  print("Resolved directory: " .. resolved_dir)
+  
+  if resolved_file ~= current_file then
+    print("⚠️  FILE PATH CHANGES AFTER RESOLUTION!")
+    print("   This suggests symlinks in the path")
+  else
+    print("✓ File path unchanged after resolution")
+  end
+  
+  if resolved_dir ~= current_dir then
+    print("⚠️  DIRECTORY PATH CHANGES AFTER RESOLUTION!")
+    print("   This suggests symlinks in the directory path")
+  else
+    print("✓ Directory path unchanged after resolution")
+  end
+  
+  -- Check each component of the path for symlinks
+  print("\n--- Path Component Analysis ---")
+  local path_parts = {}
+  local temp_path = current_dir
+  while temp_path ~= "/" and temp_path ~= "" do
+    table.insert(path_parts, 1, temp_path)
+    temp_path = vim.fn.fnamemodify(temp_path, ':h')
+    if temp_path == vim.fn.fnamemodify(temp_path, ':h') then break end
+  end
+  
+  for i, part in ipairs(path_parts) do
+    local resolved_part = vim.fn.resolve(part)
+    if resolved_part ~= part then
+      print(string.format("  %d. %s -> %s (SYMLINK)", i, part, resolved_part))
+    else
+      print(string.format("  %d. %s (normal)", i, part))
+    end
+  end
+  
   -- Check if we're on a Windows mount
   if string.match(current_file, "^/mnt/[a-z]/") then
     print("⚠️  File is on Windows filesystem (/mnt/)")
@@ -115,6 +158,24 @@ function M.debug_clang_format()
       print("   ✓ Success")
     else
       print("   ❌ Error: " .. (test_result2:gsub("\n", " ")))
+    end
+  else
+    print("2. Resolved path same as original - skipping")
+  end
+  
+  -- Test 2b: From resolved directory
+  local resolved_dir = vim.fn.resolve(current_dir)
+  if resolved_dir ~= current_dir then
+    print("2b. From resolved directory (" .. resolved_dir .. "):")
+    local test_cmd2b = string.format('cd "%s" && clang-format --dry-run "%s" 2>&1', resolved_dir, current_file)
+    local test_handle2b = io.popen(test_cmd2b)
+    local test_result2b = test_handle2b:read("*a")
+    test_handle2b:close()
+    
+    if test_result2b == "" then
+      print("   ✓ Success")
+    else
+      print("   ❌ Error: " .. (test_result2b:gsub("\n", " ")))
     end
   end
   
