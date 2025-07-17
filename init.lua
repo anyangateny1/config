@@ -352,13 +352,18 @@ require('lazy').setup({
               upward = true,
             })[1]
             
+            local working_dir
             if style_file then
               -- Use the directory containing the .clang-format file
-              return vim.fn.fnamemodify(style_file, ':h')
+              working_dir = vim.fn.fnamemodify(style_file, ':h')
             else
               -- Fallback to current file's directory
-              return vim.fn.fnamemodify(ctx.filename, ':h')
+              working_dir = vim.fn.fnamemodify(ctx.filename, ':h')
             end
+            
+            -- Log the working directory
+            print("🔧 clang-format working directory: " .. working_dir)
+            return working_dir
           end,
           -- Explicitly specify the style file
           args = function(self, ctx)
@@ -367,11 +372,18 @@ require('lazy').setup({
               upward = true,
             })[1]
             
+            local args
             if style_file then
-              return { '-style=file:' .. style_file }
+              args = { '-style=file:' .. style_file }
+              print("🎨 Using .clang-format file: " .. style_file)
             else
-              return { '-style=file' }
+              args = { '-style=file' }
+              print("⚠️  No .clang-format found, using default style search")
             end
+            
+            -- Log the full command that will be executed
+            print("📝 clang-format args: " .. table.concat(args, " "))
+            return args
           end,
         },
       },

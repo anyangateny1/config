@@ -253,4 +253,31 @@ vim.api.nvim_create_user_command('ClangFormatTestCurrent', function()
   M.test_discovery(current_file)
 end, {})
 
+-- Show which .clang-format would be used for current file
+vim.api.nvim_create_user_command('ClangFormatWhich', function()
+  local current_file = vim.fn.expand('%:p')
+  if current_file == "" then
+    print("No file currently open")
+    return
+  end
+  
+  print("=== Which .clang-format will be used? ===")
+  print("Current file: " .. current_file)
+  
+  local style_file = vim.fs.find('.clang-format', {
+    path = current_file,
+    upward = true,
+  })[1]
+  
+  if style_file then
+    print("✓ Will use: " .. style_file)
+    print("✓ Working directory: " .. vim.fn.fnamemodify(style_file, ':h'))
+    print("✓ Command args: -style=file:" .. style_file)
+  else
+    print("❌ No .clang-format found")
+    print("⚠️  Will use: -style=file (clang-format default search)")
+    print("⚠️  Working directory: " .. vim.fn.fnamemodify(current_file, ':h'))
+  end
+end, {})
+
 return M 
