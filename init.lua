@@ -320,6 +320,11 @@ require('lazy').setup({
         mode = '',
         desc = '[F]ormat buffer',
       },
+      {
+        '<leader>ci',
+        '<cmd>ConformInfo<cr>',
+        desc = '[C]onform [I]nfo - Debug formatter info',
+      },
     },
     opts = {
       notify_on_error = false,
@@ -337,6 +342,45 @@ require('lazy').setup({
       formatters_by_ft = {
         lua = { 'stylua' },
         cpp = { 'clang-format' },
+      },
+      formatters = {
+        ['clang-format'] = {
+          -- Ensure clang-format uses the directory containing .clang-format as working directory
+          cwd = function(self, ctx)
+            local style_file = vim.fs.find('.clang-format', {
+              path = ctx.filename,
+              upward = true,
+            })[1]
+            
+            if style_file then
+              -- Use the directory containing the .clang-format file
+              return vim.fn.fnamemodify(style_file, ':h')
+            else
+              -- Fallback to current file's directory
+              return vim.fn.fnamemodify(ctx.filename, ':h')
+            end
+          end,
+          -- Explicitly specify the style file and handle WSL paths
+          args = function(self, ctx)
+            local style_file = vim.fs.find('.clang-format', {
+              path = ctx.filename,
+              upward = true,
+            })[1]
+            
+            if style_file then
+              -- Convert WSL path to proper format if needed
+              local style_path = style_file
+              if string.match(style_path, "^/mnt/[a-z]/") then
+                -- For WSL, ensure the path is accessible
+                style_path = vim.fn.resolve(style_path)
+              end
+              return { '-style=file:' .. style_path }
+            else
+              -- Fallback to default style
+              return { '-style=file' }
+            end
+          end,
+        },
       },
     },
   },
@@ -458,3 +502,6 @@ require('lazy').setup({
     },
   },
 })
+
+-- Load clang-format debug utility for WSL troubleshooting
+require('custom.clang-format-debug')
