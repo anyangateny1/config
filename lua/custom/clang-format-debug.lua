@@ -73,6 +73,28 @@ function M.debug_clang_format()
     print("✓ File is on Linux filesystem")
   end
   
+  -- Line ending analysis
+  print("\n--- Line Ending Analysis ---")
+  local file_content = vim.fn.readfile(current_file, '', 10) -- Read first 10 lines
+  if #file_content > 0 then
+    -- Check vim's fileformat setting
+    print("Vim fileformat: " .. vim.bo.fileformat)
+    
+    -- Try to detect actual line endings in file
+    local raw_content = table.concat(vim.fn.readfile(current_file, 'b'), '')
+    if raw_content:find('\r\n') then
+      print("File contains: CRLF (Windows line endings)")
+    elseif raw_content:find('\r') then
+      print("File contains: CR (Old Mac line endings)")
+    elseif raw_content:find('\n') then
+      print("File contains: LF (Unix line endings)")
+    else
+      print("File contains: No line endings detected (empty or single line)")
+    end
+  else
+    print("File is empty or unreadable")
+  end
+  
   -- Look for .clang-format file with detailed search
   print("\n--- Searching for .clang-format ---")
   local search_dirs = {}
