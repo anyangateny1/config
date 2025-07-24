@@ -102,13 +102,80 @@ require('lazy').setup({
         },
       },
       spec = {
-        { '<leader>c', group = '[C]ode', mode = { 'n', 'x' } },
-        { '<leader>d', group = '[D]ocument' },
-        { '<leader>r', group = '[R]ename' },
-        { '<leader>s', group = '[S]earch' },
-        { '<leader>w', group = '[W]orkspace' },
-        { '<leader>t', group = '[T]oggle' },
-        { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
+        -- Basic navigation and editing
+        { "<Esc>", desc = "Clear search highlights" },
+        { "<C-s>", desc = "Save all buffers" },
+        { "<C-d>", desc = "Scroll down (centered)" },
+        { "<C-u>", desc = "Scroll up (centered)" },
+        { "<C-h>", desc = "Move to left window" },
+        { "<C-j>", desc = "Move to lower window" },
+        { "<C-k>", desc = "Move to upper window" },
+        { "<C-l>", desc = "Move to right window" },
+        
+        -- Terminal mode
+        { "<Esc><Esc>", desc = "Exit terminal mode", mode = "t" },
+        
+        -- Leader key groups
+        { "<leader>c", group = "[C]ode" },
+        { "<leader>ca", desc = "Code [A]ctions" },
+        { "<leader>ch", desc = "Go to [H]eader declaration" },
+        { "<leader>ct", desc = "Go to [T]ype definition" },
+        { "<leader>ci", desc = "[C]onform [I]nfo - Debug formatter" },
+        
+        { "<leader>d", group = "[D]ocument" },
+        { "<leader>ds", desc = "[D]ocument [S]ymbols" },
+        { "<leader>D", desc = "Type [D]efinition" },
+        
+        { "<leader>f", desc = "[F]ormat buffer" },
+        
+        { "<leader>h", group = "Git [H]unk", mode = { "n", "v" } },
+        
+        { "<leader>q", desc = "Open diagnostic quickfix list" },
+        
+        { "<leader>r", group = "[R]ename" },
+        { "<leader>rn", desc = "[R]e[n]ame symbol" },
+        
+        { "<leader>s", group = "[S]earch" },
+        { "<leader>sh", desc = "[S]earch [H]elp" },
+        { "<leader>sk", desc = "[S]earch [K]eymaps" },
+        { "<leader>sf", desc = "[S]earch [F]iles" },
+        { "<leader>ss", desc = "[S]earch [S]elect Telescope" },
+        { "<leader>sw", desc = "[S]earch current [W]ord" },
+        { "<leader>sg", desc = "[S]earch by [G]rep" },
+        { "<leader>sd", desc = "[S]earch [D]iagnostics" },
+        { "<leader>sr", desc = "[S]earch [R]esume" },
+        { "<leader>s.", desc = "[S]earch Recent Files" },
+        { "<leader>s/", desc = "[S]earch in Open Files" },
+        { "<leader>sn", desc = "[S]earch [N]eovim files" },
+        
+        { "<leader>t", group = "[T]oggle" },
+        { "<leader>th", desc = "[T]oggle Inlay [H]ints" },
+        
+        { "<leader>w", group = "[W]orkspace" },
+        { "<leader>ws", desc = "[W]orkspace [S]ymbols" },
+        
+        { "<leader>/", desc = "Fuzzily search in current buffer" },
+        { "<leader><leader>", desc = "Find existing buffers" },
+        
+        -- LSP navigation
+        { "g", group = "[G]oto" },
+        { "gd", desc = "[G]oto [D]efinition" },
+        { "gr", desc = "[G]oto [R]eferences" },
+        { "gI", desc = "[G]oto [I]mplementation" },
+        { "gD", desc = "[G]oto [D]eclaration" },
+        
+        -- Hover documentation
+        { "K", desc = "Hover Documentation" },
+        
+        -- Completion mappings (insert mode)
+        { "<C-n>", desc = "Next completion item", mode = "i" },
+        { "<C-p>", desc = "Previous completion item", mode = "i" },
+        { "<C-b>", desc = "Scroll docs up", mode = "i" },
+        { "<C-f>", desc = "Scroll docs down", mode = "i" },
+        { "<C-y>", desc = "Confirm completion", mode = "i" },
+        { "<C-Space>", desc = "Complete", mode = "i" },
+        { "<C-l>", desc = "Snippet jump forward", mode = { "i", "s" } },
+        { "<C-h>", desc = "Snippet jump backward", mode = { "i", "s" } },
       },
     },
   },
@@ -285,11 +352,43 @@ require('lazy').setup({
           },
         },
         clangd = {
-          cmd = { 'clangd', '--compile-commands-dir=build' },
+          cmd = { 
+            'clangd', 
+            '--compile-commands-dir=build',
+            '--header-insertion=iwyu',
+            '--completion-style=detailed',
+            '--function-arg-placeholders',
+            '--fallback-style=llvm',
+            '--clang-tidy',
+            '--all-scopes-completion',
+            '--cross-file-rename',
+            '--log=info',
+            '--background-index',
+            '--pch-storage=memory',
+            '--enable-config',
+            '--header-insertion-decorators',
+            '--suggest-missing-includes',
+          },
           filetypes = { 'c', 'cpp' },
+          init_options = {
+            usePlaceholders = true,
+            completeUnimported = true,
+            clangdFileStatus = true,
+          },
           on_attach = function(client, bufnr)
             vim.env.C_INCLUDE_PATH = '/usr/lib/x86_64-linux-gnu/openmpi/include:/usr/include'
             vim.env.LD_LIBRARY_PATH = '/usr/lib/x86_64-linux-gnu:/usr/local/lib'
+            
+            -- Enhanced keymap to go to header file declaration (like VSCode)
+            vim.keymap.set('n', '<leader>ch', function()
+              -- Use LSP to go to declaration (header file)
+              vim.lsp.buf.declaration()
+            end, { desc = 'Go to header declaration', buffer = bufnr })
+            
+            -- Alternative keymap for type definition (shows the actual type in headers)
+            vim.keymap.set('n', '<leader>ct', function()
+              vim.lsp.buf.type_definition()
+            end, { desc = 'Go to type definition', buffer = bufnr })
           end,
         },
       }
